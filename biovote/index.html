@@ -141,6 +141,8 @@
             display: flex; align-items: center; justify-content: center;
             position: relative; overflow: hidden;
             transition: border-color .3s, box-shadow .3s;
+            cursor: pointer;
+            touch-action: none;
         }
         .scanner-outer.pressing {
             border-color: var(--primary);
@@ -151,14 +153,16 @@
             box-shadow: 0 0 40px var(--glow-green), inset 0 0 20px rgba(0,200,83,.1);
         }
 
-        /* Fingerprint SVG area */
+        /* Fingerprint SVG area — pass all pointer events through to scanner-outer */
         .fp-visual {
             position: relative; width: 140px; height: 170px;
             display: flex; align-items: center; justify-content: center;
+            pointer-events: none;
         }
         .fp-visual svg.fp-lines {
             width: 100%; height: 100%; opacity: .25;
             transition: opacity .5s;
+            pointer-events: none;
         }
         .scanner-outer.pressing .fp-visual svg.fp-lines { opacity: .55; }
         .scanner-outer.success .fp-visual svg.fp-lines { opacity: .9; }
@@ -168,6 +172,7 @@
             color: var(--primary); opacity: .7;
             text-shadow: 0 0 20px var(--glow-blue);
             transition: opacity .4s, color .4s, text-shadow .4s;
+            pointer-events: none;
         }
         .scanner-outer.success .fp-letter {
             color: var(--accent); opacity: 1;
@@ -194,6 +199,48 @@
             100% { top: 8px; }
         }
 
+        /* Corner brackets on scanner */
+        .scanner-outer::before,
+        .scanner-outer::after {
+            content: '';
+            position: absolute;
+            width: 30px; height: 30px;
+            border: 2px solid var(--primary);
+            opacity: .35;
+            transition: opacity .3s, border-color .3s;
+        }
+        .scanner-outer::before {
+            top: 12px; left: 12px;
+            border-right: none; border-bottom: none;
+            border-radius: 6px 0 0 0;
+        }
+        .scanner-outer::after {
+            bottom: 12px; right: 12px;
+            border-left: none; border-top: none;
+            border-radius: 0 0 6px 0;
+        }
+        .scanner-outer.pressing::before,
+        .scanner-outer.pressing::after { opacity: .8; }
+        .scanner-outer.success::before,
+        .scanner-outer.success::after { border-color: var(--accent); opacity: 1; }
+
+        /* Extra corner brackets */
+        .corner-tl, .corner-tr, .corner-bl, .corner-br {
+            position: absolute; width: 30px; height: 30px;
+            border: 2px solid var(--primary); opacity: .35;
+            transition: opacity .3s, border-color .3s; pointer-events: none;
+        }
+        .corner-tr { top: 12px; right: 12px; border-left: none; border-bottom: none; border-radius: 0 6px 0 0; }
+        .corner-bl { bottom: 12px; left: 12px; border-right: none; border-top: none; border-radius: 0 0 0 6px; }
+        .scanner-outer.pressing .corner-tl,
+        .scanner-outer.pressing .corner-tr,
+        .scanner-outer.pressing .corner-bl,
+        .scanner-outer.pressing .corner-br { opacity: .8; }
+        .scanner-outer.success .corner-tl,
+        .scanner-outer.success .corner-tr,
+        .scanner-outer.success .corner-bl,
+        .scanner-outer.success .corner-br { border-color: var(--accent); opacity: 1; }
+
         /* Progress ring */
         .progress-ring {
             position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
@@ -208,7 +255,7 @@
             transform: rotate(-90deg); transform-origin: center;
             transition: stroke .3s;
         }
-        .scanner-outer.success .progress-ring circle.bar { stroke: var(--accent); }
+        .scanner-outer.success ~ .progress-ring circle.bar { stroke: var(--accent); }
 
         .scanner-label {
             text-align: center; color: var(--text-muted); font-size: .85rem;
@@ -219,6 +266,21 @@
             text-align: center; font-size: .95rem; font-weight: 600;
             margin-top: 10px; min-height: 24px;
             transition: color .3s;
+        }
+
+        /* Pulse ring on scanner */
+        .pulse-ring {
+            position: absolute; inset: -6px;
+            border: 2px solid var(--primary);
+            border-radius: 40px; opacity: 0;
+            pointer-events: none;
+        }
+        .scanner-outer.pressing .pulse-ring {
+            animation: pulseOut 1.5s ease-out infinite;
+        }
+        @keyframes pulseOut {
+            0%   { transform: scale(1); opacity: .5; }
+            100% { transform: scale(1.12); opacity: 0; }
         }
 
         /* ========== INFO CARD ========== */
@@ -267,7 +329,7 @@
         .candidate-avatar {
             width: 48px; height: 48px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.3rem; font-weight: 700; color: #fff;
+            font-size: 1.3rem; font-weight: 700; color: #fff; flex-shrink: 0;
         }
         .candidate-info { flex: 1; }
         .candidate-name { font-weight: 600; font-size: 1rem; }
@@ -276,7 +338,7 @@
             width: 26px; height: 26px; border-radius: 50%;
             border: 2px solid var(--border); display: flex;
             align-items: center; justify-content: center;
-            transition: .2s;
+            transition: .2s; flex-shrink: 0;
         }
         .candidate-card.selected .candidate-check {
             background: var(--accent); border-color: var(--accent);
@@ -290,18 +352,62 @@
         }
         .receipt h3 { color: var(--accent); margin-bottom: 12px; }
 
-        /* ========== NAV TABS (bottom) ========== */
-        .nav-tabs {
-            display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; justify-content: center;
+        /* ========== PROMINENT VOTER ID ========== */
+        .voter-id-highlight {
+            width: 100%; text-align: center; margin-bottom: 20px;
+            padding: 18px 16px;
+            background: linear-gradient(135deg, rgba(26,115,232,.12), rgba(0,200,83,.10));
+            border: 2px dashed var(--primary);
+            border-radius: var(--radius);
         }
-        .nav-tab {
-            padding: 8px 18px; border-radius: 999px;
-            font-size: .82rem; font-weight: 600; cursor: pointer;
-            background: var(--surface2); color: var(--text-muted);
-            border: 1px solid var(--border); transition: .2s;
+        .voter-id-highlight .vid-label {
+            font-size: .75rem; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--text-muted); margin-bottom: 6px; font-weight: 600;
         }
-        .nav-tab:hover { color: var(--text); border-color: var(--text-muted); }
-        .nav-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .voter-id-highlight .vid-value {
+            font-size: 1.65rem; font-weight: 800; font-family: 'Consolas', 'Courier New', monospace;
+            color: var(--primary); letter-spacing: 2px;
+            word-break: break-all;
+        }
+
+        /* Action button row */
+        .action-row {
+            display: flex; gap: 10px; width: 100%; margin-bottom: 14px;
+        }
+        .action-row .btn { flex: 1; font-size: .88rem; padding: 12px 10px; }
+
+        .btn-copy { background: var(--primary); color: #fff; }
+        .btn-copy:hover { background: var(--primary-dark); box-shadow: 0 4px 20px var(--glow-blue); }
+        .btn-download { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+        .btn-download:hover { background: var(--border); }
+
+        /* Retention notice */
+        .retain-notice {
+            width: 100%;
+            background: rgba(255,193,7,.08);
+            border-left: 4px solid #ffc107;
+            border-radius: 0 10px 10px 0;
+            padding: 14px 16px;
+            margin-bottom: 20px;
+            font-size: .84rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+        }
+        .retain-notice strong { color: #ffc107; }
+
+        /* Copied toast */
+        .copy-toast {
+            position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(20px);
+            background: var(--accent); color: #000; font-weight: 600; font-size: .88rem;
+            padding: 10px 24px; border-radius: 999px;
+            box-shadow: 0 4px 20px rgba(0,0,0,.4);
+            opacity: 0; pointer-events: none;
+            transition: opacity .3s, transform .3s;
+            z-index: 1000;
+        }
+        .copy-toast.show {
+            opacity: 1; transform: translateX(-50%) translateY(0);
+        }
 
         /* ========== RESPONSIVE ========== */
         @media (max-width: 480px) {
@@ -339,6 +445,46 @@
             0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
             100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
         }
+
+        /* ========== SHIELD ICON ========== */
+        .shield-icon {
+            width: 80px; height: 80px; margin: 0 auto 18px;
+            border-radius: 50%; background: var(--danger);
+            display: flex; align-items: center; justify-content: center;
+            animation: popIn .5s cubic-bezier(.17,.67,.24,1.3);
+        }
+        .shield-icon svg { width: 44px; height: 44px; }
+
+        /* ========== ADMIN DASHBOARD ========== */
+        .dashboard { width: 100%; margin-bottom: 22px; }
+        .dash-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            margin-bottom: 10px;
+        }
+        .dash-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 14px; text-align: center;
+        }
+        .dash-card .dash-num {
+            font-size: 1.8rem; font-weight: 800; line-height: 1.2;
+        }
+        .dash-card .dash-label {
+            font-size: .72rem; text-transform: uppercase; letter-spacing: .5px;
+            color: var(--text-muted); margin-top: 4px;
+        }
+        .dash-card.full { grid-column: 1 / -1; }
+        .dash-card .dash-num.green { color: var(--accent); }
+        .dash-card .dash-num.blue { color: var(--primary); }
+        .dash-card .dash-num.red { color: var(--danger); }
+        .dash-card .dash-num.orange { color: #fb8c00; }
+        .dash-card .dash-num.muted { color: var(--text-muted); }
+
+        /* ========== FOOTER ========== */
+        footer {
+            width: 100%; text-align: center; padding: 16px;
+            color: var(--text-muted); font-size: .75rem;
+            border-top: 1px solid var(--border);
+        }
     </style>
 </head>
 <body>
@@ -367,6 +513,7 @@
         <p class="subtitle">Secure, simulated biometric voting portal.<br>Register or authenticate to cast your vote.</p>
         <button class="btn btn-primary" onclick="showScreen('screen-register')">🆕 New Voter Registration</button>
         <button class="btn btn-outline" onclick="showScreen('screen-login')">🔐 Returning Voter Login</button>
+        <button class="btn btn-outline" onclick="refreshDashboard(); showScreen('screen-dashboard')" style="margin-top:4px;">📊 Election Dashboard</button>
     </div>
 
     <!-- ===== SCREEN 1: REGISTER — NAME ===== -->
@@ -385,10 +532,13 @@
     <!-- ===== SCREEN 2: FINGERPRINT ENROLLMENT ===== -->
     <div class="screen" id="screen-enroll">
         <h1>Fingerprint Enrollment</h1>
-        <p class="subtitle">Your initial: <strong id="enroll-letter-label"></strong><br>Long press the scanner for <strong>3 seconds</strong> to register your simulated fingerprint.</p>
+        <p class="subtitle">Your initial: <strong id="enroll-letter-label" style="color:var(--primary);font-size:1.1em;"></strong><br>Long press the scanner for <strong>3 seconds</strong> to register your simulated fingerprint.</p>
 
         <div class="scanner-wrap" id="enroll-scanner">
             <div class="scanner-outer" id="enroll-scanner-outer">
+                <div class="pulse-ring"></div>
+                <div class="corner-tr"></div>
+                <div class="corner-bl"></div>
                 <!-- Fingerprint lines SVG -->
                 <div class="fp-visual">
                     <svg class="fp-lines" viewBox="0 0 140 170">
@@ -405,6 +555,12 @@
                             <path d="M85 35 Q102 65 102 100 Q102 125 85 148"/>
                             <path d="M70 28 Q55 50 50 85 Q47 110 58 140"/>
                             <path d="M70 28 Q85 50 90 85 Q93 110 82 140"/>
+                            <!-- extra detail ridges -->
+                            <path d="M48 50 Q42 75 45 105 Q47 125 60 147"/>
+                            <path d="M92 50 Q98 75 95 105 Q93 125 80 147"/>
+                            <ellipse cx="70" cy="97" rx="14" ry="22"/>
+                            <path d="M60 60 Q50 85 52 110"/>
+                            <path d="M80 60 Q90 85 88 110"/>
                         </g>
                     </svg>
                     <span class="fp-letter" id="enroll-letter"></span>
@@ -433,15 +589,37 @@
         </div>
         <h1>Registration Complete!</h1>
         <p class="subtitle">Your voter registration and simulated fingerprint enrollment were successful.</p>
+
+        <!-- Prominent Voter ID display -->
+        <div class="voter-id-highlight">
+            <div class="vid-label">Your Voter ID</div>
+            <div class="vid-value" id="success-vid-big"></div>
+        </div>
+
+        <!-- Copy & Download action row -->
+        <div class="action-row">
+            <button class="btn btn-copy" onclick="copyVoterId()">📋 Copy Voter ID</button>
+            <button class="btn btn-download" onclick="downloadRegistration()">⬇ Download Details</button>
+        </div>
+
         <div class="info-card">
             <div class="info-row"><span class="label">Voter Name</span><span class="value" id="success-name"></span></div>
-            <div class="info-row"><span class="label">Voter ID</span><span class="value" id="success-vid"></span></div>
+            <div class="info-row"><span class="label">Voter ID</span><span class="value" id="success-vid" style="color:var(--primary);font-family:monospace;"></span></div>
             <div class="info-row"><span class="label">Initial Letter</span><span class="value" id="success-letter"></span></div>
+            <div class="info-row"><span class="label">Biometric Template</span><span class="value" style="color:var(--text-muted);font-size:.72rem;font-family:monospace;" id="success-template"></span></div>
             <div class="info-row"><span class="label">Fingerprint Status</span><span class="value" style="color:var(--accent);">✅ Enrolled (Simulated)</span></div>
         </div>
-        <p class="subtitle" style="font-size:.82rem;">⚠ Save your <strong>Voter ID</strong> — you'll need it to authenticate later.</p>
+
+        <!-- Retention notice -->
+        <div class="retain-notice">
+            <strong>⚠ Important:</strong> Please save your Voter ID. You will need it every time you return to authenticate and cast your vote. Without it, you cannot access the voting portal.
+        </div>
+
         <button class="btn btn-accent" onclick="showScreen('screen-home')">🏠 Go to Home</button>
     </div>
+
+    <!-- Copied toast notification -->
+    <div class="copy-toast" id="copy-toast">✅ Voter ID copied to clipboard!</div>
 
     <!-- ===== SCREEN 4: RETURNING VOTER LOGIN ===== -->
     <div class="screen" id="screen-login">
@@ -459,10 +637,13 @@
     <!-- ===== SCREEN 4b: AUTHENTICATION SCANNER ===== -->
     <div class="screen" id="screen-auth">
         <h1>Biometric Verification</h1>
-        <p class="subtitle">Welcome back, <strong id="auth-name"></strong>.<br>Your registered initial: <strong id="auth-letter-label"></strong><br>Long press the scanner for <strong>3 seconds</strong> to verify.</p>
+        <p class="subtitle">Welcome back, <strong id="auth-name"></strong>.<br>Your registered initial: <strong id="auth-letter-label" style="color:var(--primary);font-size:1.1em;"></strong><br>Long press the scanner for <strong>3 seconds</strong> to verify.</p>
 
         <div class="scanner-wrap" id="auth-scanner">
             <div class="scanner-outer" id="auth-scanner-outer">
+                <div class="pulse-ring"></div>
+                <div class="corner-tr"></div>
+                <div class="corner-bl"></div>
                 <div class="fp-visual">
                     <svg class="fp-lines" viewBox="0 0 140 170">
                         <g stroke="#1a73e8" fill="none" stroke-width="1.5" opacity=".6">
@@ -478,6 +659,11 @@
                             <path d="M85 35 Q102 65 102 100 Q102 125 85 148"/>
                             <path d="M70 28 Q55 50 50 85 Q47 110 58 140"/>
                             <path d="M70 28 Q85 50 90 85 Q93 110 82 140"/>
+                            <path d="M48 50 Q42 75 45 105 Q47 125 60 147"/>
+                            <path d="M92 50 Q98 75 95 105 Q93 125 80 147"/>
+                            <ellipse cx="70" cy="97" rx="14" ry="22"/>
+                            <path d="M60 60 Q50 85 52 110"/>
+                            <path d="M80 60 Q90 85 88 110"/>
                         </g>
                     </svg>
                     <span class="fp-letter" id="auth-letter"></span>
@@ -499,7 +685,7 @@
     <!-- ===== SCREEN 5: VOTING ===== -->
     <div class="screen" id="screen-vote">
         <h1>Cast Your Vote</h1>
-        <p class="subtitle">Select one candidate and submit your vote.</p>
+        <p class="subtitle">Select one candidate and submit your vote.<br><span style="font-size:.8rem;color:var(--text-muted);">Authenticated as: <strong id="vote-voter-name"></strong></span></p>
         <div class="candidates" id="candidates-list"></div>
         <button class="btn btn-accent" id="btn-cast-vote" onclick="castVote()" disabled>🗳 Cast Vote</button>
         <button class="btn btn-outline" onclick="showScreen('screen-home')" style="margin-top:12px;">← Cancel</button>
@@ -518,15 +704,22 @@
         <button class="btn btn-outline" onclick="showScreen('screen-home')">🏠 Go to Home</button>
     </div>
 
-    <!-- ===== SCREEN: ALREADY VOTED ===== -->
+    <!-- ===== SCREEN: ALREADY VOTED (dedicated duplicate rejection) ===== -->
     <div class="screen" id="screen-already-voted">
-        <h1 style="color:var(--danger);">⛔ Already Voted</h1>
-        <p class="subtitle">This voter ID has already been used to cast a vote.<br>Each voter may only vote once.</p>
-        <div class="info-card">
-            <div class="info-row"><span class="label">Voter ID</span><span class="value" id="already-vid"></span></div>
-            <div class="info-row"><span class="label">Status</span><span class="value" style="color:var(--danger);">Vote Already Cast</span></div>
+        <div class="shield-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <line x1="9" y1="12" x2="15" y2="12"/>
+            </svg>
         </div>
-        <button class="btn btn-outline" onclick="showScreen('screen-home')">🏠 Go to Home</button>
+        <h1 style="color:var(--danger);">VOTE ALREADY CAST!</h1>
+        <p class="subtitle">You have already cast your vote in this election.<br>Duplicate voting is not permitted.</p>
+        <div class="info-card">
+            <div class="info-row"><span class="label">Voter ID</span><span class="value" id="already-vid" style="font-family:monospace;"></span></div>
+            <div class="info-row"><span class="label">Voter Name</span><span class="value" id="already-name"></span></div>
+            <div class="info-row"><span class="label">Voting Status</span><span class="value" style="color:var(--danger);font-weight:700;">⛔ ALREADY VOTED</span></div>
+        </div>
+        <button class="btn btn-outline" onclick="showScreen('screen-home')">🏠 Return to Welcome Page</button>
     </div>
 
     <!-- ===== SCREEN: AUTH FAILED ===== -->
@@ -537,7 +730,47 @@
         <button class="btn btn-outline" onclick="showScreen('screen-home')" style="margin-top:12px;">🏠 Go to Home</button>
     </div>
 
+    <!-- ===== SCREEN: ADMIN DASHBOARD ===== -->
+    <div class="screen" id="screen-dashboard">
+        <h1>📊 Election Dashboard</h1>
+        <p class="subtitle">Live statistics from this BIOVOTE session.</p>
+        <div class="dashboard">
+            <div class="dash-grid">
+                <div class="dash-card">
+                    <div class="dash-num blue" id="dash-registered">0</div>
+                    <div class="dash-label">Registered Voters</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-num green" id="dash-voted">0</div>
+                    <div class="dash-label">Votes Recorded</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-num muted" id="dash-not-voted">0</div>
+                    <div class="dash-label">Not Yet Voted</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-num green" id="dash-ballots">0</div>
+                    <div class="dash-label">Total Ballots</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-num red" id="dash-duplicates">0</div>
+                    <div class="dash-label">Duplicate Attempts Blocked</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-num orange" id="dash-auth-fails">0</div>
+                    <div class="dash-label">Invalid Fingerprint Attempts</div>
+                </div>
+            </div>
+        </div>
+        <button class="btn btn-outline" onclick="showScreen('screen-home')">🏠 Return to Home</button>
+    </div>
+
 </main>
+
+<!-- ======================== FOOTER ======================== -->
+<footer>
+    BIOVOTE &copy; 2026 — Simulated Biometric Voting System &bull; No real biometric data is captured or stored.
+</footer>
 
 <!-- ======================== SCRIPT ======================== -->
 <script>
@@ -574,23 +807,23 @@
 
     // ==================== NAVIGATION ====================
     window.showScreen = function(id) {
-        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        const target = document.getElementById(id);
+        document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+        var target = document.getElementById(id);
         if (target) target.classList.add('active');
     };
 
     // ==================== SCREEN 1: NAME SUBMIT ====================
     window.handleNameSubmit = function() {
-        const input = document.getElementById('reg-name');
-        const field = document.getElementById('name-field');
-        const val = input.value.trim();
+        var input = document.getElementById('reg-name');
+        var field = document.getElementById('name-field');
+        var val = input.value.trim();
         if (!val) {
             field.classList.add('has-error');
             return;
         }
         field.classList.remove('has-error');
 
-        const firstLetter = val.charAt(0).toUpperCase();
+        var firstLetter = val.charAt(0).toUpperCase();
         currentVoter = { name: val, letter: firstLetter };
 
         // Populate enrollment screen
@@ -607,35 +840,35 @@
 
     // ==================== FINGERPRINT SCANNER ENGINE ====================
     function createScannerController(opts) {
-        const scannerEl = document.getElementById(opts.scannerId);
-        const outerEl = document.getElementById(opts.outerId);
-        const progressEl = document.getElementById(opts.progressId);
-        const statusEl = document.getElementById(opts.statusId);
-        const CIRCUMFERENCE = 2 * Math.PI * 22; // ~138.23
+        var scannerEl = document.getElementById(opts.scannerId);
+        var outerEl = document.getElementById(opts.outerId);
+        var progressEl = document.getElementById(opts.progressId);
+        var statusEl = document.getElementById(opts.statusId);
+        var CIRCUMFERENCE = 2 * Math.PI * 22; // ~138.23
 
-        let pressing = false;
-        let startTime = 0;
-        let rafId = null;
-        let completed = false;
+        var pressing = false;
+        var startTime = 0;
+        var rafId = null;
+        var completed = false;
 
         function updateProgress(fraction) {
-            const offset = CIRCUMFERENCE * (1 - fraction);
+            var offset = CIRCUMFERENCE * (1 - fraction);
             progressEl.style.strokeDashoffset = offset;
         }
 
         function tick() {
             if (!pressing || completed) return;
-            const elapsed = Date.now() - startTime;
-            const fraction = Math.min(elapsed / 3000, 1);
+            var elapsed = Date.now() - startTime;
+            var fraction = Math.min(elapsed / 3000, 1);
             updateProgress(fraction);
 
             if (fraction < 1) {
-                const pct = Math.round(fraction * 100);
-                statusEl.textContent = `Scanning... ${pct}%`;
+                var pct = Math.round(fraction * 100);
+                statusEl.textContent = 'Scanning... ' + pct + '%';
                 statusEl.style.color = 'var(--primary)';
                 rafId = requestAnimationFrame(tick);
             } else {
-                // Success
+                // Success!
                 completed = true;
                 pressing = false;
                 outerEl.classList.remove('pressing');
@@ -649,7 +882,12 @@
         function onPressStart(e) {
             if (completed) return;
             e.preventDefault();
+            // Capture pointer so we get pointerup even if finger/cursor leaves the element
+            if (e.pointerId !== undefined) {
+                outerEl.setPointerCapture(e.pointerId);
+            }
             pressing = true;
+            activePointerId = e.pointerId !== undefined ? e.pointerId : null;
             startTime = Date.now();
             outerEl.classList.add('pressing');
             statusEl.textContent = 'Hold steady...';
@@ -658,76 +896,89 @@
         }
 
         function onPressEnd(e) {
-            if (completed) return;
+            if (completed || !pressing) return;
+            // Only react to the pointer that started the press
+            if (e.pointerId !== undefined && activePointerId !== null && e.pointerId !== activePointerId) return;
             e.preventDefault();
             pressing = false;
+            activePointerId = null;
             outerEl.classList.remove('pressing');
             cancelAnimationFrame(rafId);
 
-            const elapsed = Date.now() - startTime;
+            var elapsed = Date.now() - startTime;
             if (elapsed < 3000) {
-                // Not held long enough — reset
+                // Not held long enough — reset progress
                 updateProgress(0);
-                statusEl.textContent = elapsed > 300 ? 'Released too early. Hold for 3 seconds.' : '';
-                statusEl.style.color = elapsed > 300 ? 'var(--danger)' : '';
+                if (elapsed > 300) {
+                    statusEl.textContent = 'Hold for 3 seconds to complete enrollment.';
+                    statusEl.style.color = 'var(--danger)';
+                } else {
+                    statusEl.textContent = 'Tap & hold — don\'t just click!';
+                    statusEl.style.color = 'var(--danger)';
+                }
             }
         }
 
-        // Mouse events
-        scannerEl.addEventListener('mousedown', onPressStart);
-        window.addEventListener('mouseup', onPressEnd);
+        var activePointerId = null;
 
-        // Touch events
-        scannerEl.addEventListener('touchstart', onPressStart, { passive: false });
-        window.addEventListener('touchend', onPressEnd, { passive: false });
-        window.addEventListener('touchcancel', onPressEnd, { passive: false });
+        // Prevent context menu, text selection and drag on long press
+        outerEl.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+        outerEl.addEventListener('selectstart', function(e) { e.preventDefault(); });
+        outerEl.addEventListener('dragstart', function(e) { e.preventDefault(); });
+
+        // Unified Pointer Events — handles mouse, touch and pen in one API
+        // No more double-firing from separate mouse/touch listeners
+        outerEl.addEventListener('pointerdown', onPressStart);
+        outerEl.addEventListener('pointerup', onPressEnd);
+        outerEl.addEventListener('pointercancel', onPressEnd);
+        outerEl.addEventListener('lostpointercapture', function(e) {
+            // If we lose capture unexpectedly while pressing, treat as release
+            if (pressing && !completed) {
+                onPressEnd(e);
+            }
+        });
 
         return {
-            reset() {
+            reset: function() {
                 completed = false;
                 pressing = false;
                 cancelAnimationFrame(rafId);
                 outerEl.classList.remove('pressing', 'success');
                 updateProgress(0);
                 statusEl.textContent = '';
-            },
-            destroy() {
-                scannerEl.removeEventListener('mousedown', onPressStart);
-                window.removeEventListener('mouseup', onPressEnd);
-                scannerEl.removeEventListener('touchstart', onPressStart);
-                window.removeEventListener('touchend', onPressEnd);
-                window.removeEventListener('touchcancel', onPressEnd);
             }
         };
     }
 
     // ==================== BIOMETRIC TEMPLATE GENERATOR ====================
     function generateBiometricTemplate(name, letter) {
-        // Create a unique simulated biometric template using multiple sources of entropy
-        const timestamp = Date.now();
-        const rand = Math.random().toString(36).substring(2, 10);
-        const nameHash = hashString(name + timestamp + rand);
-        return `BIOTEMPLATE-${letter}-${nameHash}-${rand.toUpperCase()}`;
+        // Create a unique simulated biometric template using multiple sources of entropy.
+        // This is NOT the alphabet alone — it combines the letter, a hash of name + timestamp,
+        // and random segments to produce a unique per-voter identifier.
+        var timestamp = Date.now();
+        var rand1 = Math.random().toString(36).substring(2, 10).toUpperCase();
+        var rand2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+        var nameHash = simpleHash(name + '-' + timestamp + '-' + rand1);
+        return 'BIOTP-' + letter + '-' + nameHash + '-' + rand1 + rand2;
     }
 
-    function hashString(str) {
-        let hash = 0;
-        for (let i = 0; i < str.length; i++) {
-            const char = str.charCodeAt(i);
-            hash = ((hash << 5) - hash) + char;
-            hash |= 0; // Convert to 32bit int
+    function simpleHash(str) {
+        var hash = 5381;
+        for (var i = 0; i < str.length; i++) {
+            hash = ((hash << 5) + hash) + str.charCodeAt(i);
+            hash = hash & 0xFFFFFFFF; // keep it 32-bit
         }
         return Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
     }
 
     function generateVoterId() {
-        const seg1 = Math.random().toString(36).substring(2, 6).toUpperCase();
-        const seg2 = Math.random().toString(36).substring(2, 6).toUpperCase();
-        return `BV-${seg1}-${seg2}`;
+        var seg1 = Math.random().toString(36).substring(2, 6).toUpperCase();
+        var seg2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return 'BV-' + seg1 + '-' + seg2;
     }
 
     // ==================== ENROLLMENT SCANNER ====================
-    const enrollScanner = createScannerController({
+    var enrollScanner = createScannerController({
         scannerId: 'enroll-scanner',
         outerId: 'enroll-scanner-outer',
         progressId: 'enroll-progress',
@@ -742,15 +993,15 @@
     function onEnrollComplete() {
         if (!currentVoter) return;
 
-        const voterId = generateVoterId();
-        const template = generateBiometricTemplate(currentVoter.name, currentVoter.letter);
+        var voterId = generateVoterId();
+        var template = generateBiometricTemplate(currentVoter.name, currentVoter.letter);
 
-        const voterRecord = {
+        var voterRecord = {
             name: currentVoter.name,
             letter: currentVoter.letter,
             voterId: voterId,
             template: template,
-            hasVoted: false,
+            votingStatus: 'NOT_VOTED',
             registeredAt: new Date().toISOString()
         };
 
@@ -760,46 +1011,190 @@
         // Populate success screen
         document.getElementById('success-name').textContent = voterRecord.name;
         document.getElementById('success-vid').textContent = voterRecord.voterId;
+        document.getElementById('success-vid-big').textContent = voterRecord.voterId;
         document.getElementById('success-letter').textContent = voterRecord.letter;
+        // Show a truncated template for display
+        var tplDisplay = voterRecord.template;
+        if (tplDisplay.length > 28) tplDisplay = tplDisplay.substring(0, 28) + '…';
+        document.getElementById('success-template').textContent = tplDisplay;
 
-        // Small delay for UX
-        setTimeout(() => showScreen('screen-reg-success'), 800);
+        // Store last registered voter for copy/download actions
+        lastRegisteredVoter = voterRecord;
+
+        // Small delay for UX delight
+        setTimeout(function() { showScreen('screen-reg-success'); }, 900);
     }
+
+    // ==================== COPY & DOWNLOAD ====================
+    var lastRegisteredVoter = null;
+
+    window.copyVoterId = function() {
+        if (!lastRegisteredVoter) return;
+        var vid = lastRegisteredVoter.voterId;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(vid).then(showCopyToast, fallbackCopy);
+        } else {
+            fallbackCopy();
+        }
+
+        function fallbackCopy() {
+            var ta = document.createElement('textarea');
+            ta.value = vid;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); showCopyToast(); }
+            catch(e) { /* silent */ }
+            document.body.removeChild(ta);
+        }
+    };
+
+    function showCopyToast() {
+        var toast = document.getElementById('copy-toast');
+        toast.classList.add('show');
+        setTimeout(function() { toast.classList.remove('show'); }, 2200);
+    }
+
+    window.downloadRegistration = function() {
+        if (!lastRegisteredVoter) return;
+        var v = lastRegisteredVoter;
+        var regDate = new Date(v.registeredAt).toLocaleString();
+
+        var content =
+            '════════════════════════════════════════════\n' +
+            '        BIOVOTE — Voter Registration Card\n' +
+            '════════════════════════════════════════════\n\n' +
+            'Voter Name       : ' + v.name + '\n' +
+            'Voter ID         : ' + v.voterId + '\n' +
+            'Initial Letter   : ' + v.letter + '\n' +
+            'Registration Date: ' + regDate + '\n' +
+            'Enrollment Status: Fingerprint Enrolled (Simulated)\n\n' +
+            '────────────────────────────────────────────\n' +
+            'IMPORTANT: Retain this Voter ID. You will\n' +
+            'need it every time you return to authenticate\n' +
+            'and cast your vote on the BIOVOTE portal.\n' +
+            '────────────────────────────────────────────\n\n' +
+            'Note: This is a simulated biometric voting\n' +
+            'system. No real biometric data is captured.\n';
+
+        var blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'BIOVOTE_Registration_' + v.voterId + '.txt';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     // ==================== LOCAL STORAGE ====================
     function getVoters() {
         try {
             return JSON.parse(localStorage.getItem('biovote_voters') || '{}');
-        } catch { return {}; }
+        } catch(e) { return {}; }
     }
 
     function saveVoter(record) {
-        const voters = getVoters();
+        var voters = getVoters();
         voters[record.voterId] = record;
         localStorage.setItem('biovote_voters', JSON.stringify(voters));
     }
 
     function findVoter(voterId) {
-        const voters = getVoters();
+        var voters = getVoters();
         return voters[voterId] || null;
     }
 
-    function markVoted(voterId, candidateId) {
-        const voters = getVoters();
-        if (voters[voterId]) {
-            voters[voterId].hasVoted = true;
-            voters[voterId].votedFor = candidateId;
-            voters[voterId].votedAt = new Date().toISOString();
-            localStorage.setItem('biovote_voters', JSON.stringify(voters));
-        }
+    // ==================== BALLOT STORAGE (anonymous) ====================
+    function getBallots() {
+        try {
+            return JSON.parse(localStorage.getItem('biovote_ballots') || '[]');
+        } catch(e) { return []; }
     }
+
+    function saveBallot(candidateId) {
+        var ballots = getBallots();
+        ballots.push({ candidateId: candidateId, timestamp: new Date().toISOString() });
+        localStorage.setItem('biovote_ballots', JSON.stringify(ballots));
+    }
+
+    // ==================== SECURITY LOG ====================
+    function getSecurityLog() {
+        try {
+            return JSON.parse(localStorage.getItem('biovote_security_log') || '{}');
+        } catch(e) { return {}; }
+    }
+
+    function saveSecurityLog(log) {
+        localStorage.setItem('biovote_security_log', JSON.stringify(log));
+    }
+
+    function logDuplicateAttempt(voterId) {
+        var log = getSecurityLog();
+        if (!log.duplicateAttempts) log.duplicateAttempts = 0;
+        if (!log.duplicateEvents) log.duplicateEvents = [];
+        log.duplicateAttempts++;
+        log.duplicateEvents.push({ voterId: voterId, timestamp: new Date().toISOString() });
+        saveSecurityLog(log);
+    }
+
+    function logAuthFail(voterId) {
+        var log = getSecurityLog();
+        if (!log.authFails) log.authFails = 0;
+        log.authFails++;
+        saveSecurityLog(log);
+    }
+
+    // ==================== ATOMIC VOTE + STATUS UPDATE ====================
+    function atomicCastVote(voterId, candidateId) {
+        // Re-read voter from storage to prevent stale-session reuse
+        var voters = getVoters();
+        var voter = voters[voterId];
+        if (!voter) return { success: false, reason: 'NOT_FOUND' };
+        if (voter.votingStatus === 'VOTED') {
+            logDuplicateAttempt(voterId);
+            return { success: false, reason: 'ALREADY_VOTED' };
+        }
+
+        // Record anonymous ballot FIRST
+        saveBallot(candidateId);
+
+        // THEN mark voter as VOTED
+        voter.votingStatus = 'VOTED';
+        voter.votedAt = new Date().toISOString();
+        // NOTE: we do NOT store candidateId on the voter record (separation of identity and ballot)
+        voters[voterId] = voter;
+        localStorage.setItem('biovote_voters', JSON.stringify(voters));
+
+        return { success: true };
+    }
+
+    // ==================== MIGRATE LEGACY RECORDS ====================
+    // Safely migrate any existing voter records that use the old `hasVoted` boolean
+    (function migrateRecords() {
+        var voters = getVoters();
+        var changed = false;
+        for (var vid in voters) {
+            if (voters.hasOwnProperty(vid)) {
+                var v = voters[vid];
+                if (v.votingStatus === undefined) {
+                    v.votingStatus = v.hasVoted ? 'VOTED' : 'NOT_VOTED';
+                    changed = true;
+                }
+            }
+        }
+        if (changed) localStorage.setItem('biovote_voters', JSON.stringify(voters));
+    })();
 
     // ==================== SCREEN 4: RETURNING VOTER LOGIN ====================
     window.handleLoginLookup = function() {
-        const input = document.getElementById('login-vid');
-        const field = document.getElementById('login-field');
-        const errorEl = document.getElementById('login-error');
-        const val = input.value.trim().toUpperCase();
+        var input = document.getElementById('login-vid');
+        var field = document.getElementById('login-field');
+        var errorEl = document.getElementById('login-error');
+        var val = input.value.trim().toUpperCase();
 
         if (!val) {
             field.classList.add('has-error');
@@ -807,16 +1202,18 @@
             return;
         }
 
-        const voter = findVoter(val);
+        var voter = findVoter(val);
         if (!voter) {
             field.classList.add('has-error');
             errorEl.textContent = 'Voter ID not found. Please check and try again.';
             return;
         }
 
-        // Check if already voted
-        if (voter.hasVoted) {
+        // CHECK VOTING STATUS BEFORE AUTHENTICATION
+        if (voter.votingStatus === 'VOTED') {
+            logDuplicateAttempt(voter.voterId);
             document.getElementById('already-vid').textContent = voter.voterId;
+            document.getElementById('already-name').textContent = voter.name;
             showScreen('screen-already-voted');
             return;
         }
@@ -837,7 +1234,7 @@
     });
 
     // ==================== AUTH SCANNER ====================
-    const authScanner = createScannerController({
+    var authScanner = createScannerController({
         scannerId: 'auth-scanner',
         outerId: 'auth-scanner-outer',
         progressId: 'auth-progress',
@@ -853,43 +1250,53 @@
         if (!authVoter) return;
 
         // Simulate biometric matching:
-        // We regenerate a verification template and compare the letter + voter ID
-        // against the stored template. Since this is a simulation, we validate that
-        // the stored template contains the voter's letter and was generated for this voter.
-        const stored = authVoter.template;
-        const expectedPrefix = `BIOTEMPLATE-${authVoter.letter}-`;
+        var stored = authVoter.template;
+        var expectedPrefix = 'BIOTP-' + authVoter.letter + '-';
 
-        if (stored && stored.startsWith(expectedPrefix)) {
-            // Match — authenticate
-            setTimeout(() => {
+        if (stored && stored.startsWith(expectedPrefix) && stored.length > 20) {
+            // SECOND SECURITY CHECK: re-read status from storage before unlocking voting
+            var freshVoter = findVoter(authVoter.voterId);
+            if (freshVoter && freshVoter.votingStatus === 'VOTED') {
+                logDuplicateAttempt(authVoter.voterId);
+                setTimeout(function() {
+                    document.getElementById('already-vid').textContent = authVoter.voterId;
+                    document.getElementById('already-name').textContent = authVoter.name;
+                    authVoter = null;
+                    showScreen('screen-already-voted');
+                }, 900);
+                return;
+            }
+            // Match — authentication successful
+            setTimeout(function() {
                 selectedCandidate = null;
+                document.getElementById('vote-voter-name').textContent = authVoter.name;
                 renderCandidates();
                 showScreen('screen-vote');
-            }, 800);
+            }, 900);
         } else {
-            // Mismatch
-            setTimeout(() => showScreen('screen-auth-fail'), 800);
+            // Mismatch — authentication failed
+            logAuthFail(authVoter.voterId);
+            setTimeout(function() { showScreen('screen-auth-fail'); }, 900);
         }
     }
 
     // ==================== VOTING ====================
     function renderCandidates() {
-        const list = document.getElementById('candidates-list');
+        var list = document.getElementById('candidates-list');
         list.innerHTML = '';
-        candidates.forEach(c => {
-            const div = document.createElement('div');
+        candidates.forEach(function(c) {
+            var div = document.createElement('div');
             div.className = 'candidate-card' + (selectedCandidate === c.id ? ' selected' : '');
-            div.innerHTML = `
-                <div class="candidate-avatar" style="background:${c.color};">${c.name.charAt(0)}</div>
-                <div class="candidate-info">
-                    <div class="candidate-name">${c.name}</div>
-                    <div class="candidate-party">${c.party}</div>
-                </div>
-                <div class="candidate-check">
-                    ${selectedCandidate === c.id ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-                </div>
-            `;
-            div.addEventListener('click', () => {
+            div.innerHTML =
+                '<div class="candidate-avatar" style="background:' + c.color + ';">' + c.name.charAt(0) + '</div>' +
+                '<div class="candidate-info">' +
+                    '<div class="candidate-name">' + c.name + '</div>' +
+                    '<div class="candidate-party">' + c.party + '</div>' +
+                '</div>' +
+                '<div class="candidate-check">' +
+                    (selectedCandidate === c.id ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : '') +
+                '</div>';
+            div.addEventListener('click', function() {
                 selectedCandidate = c.id;
                 renderCandidates();
                 document.getElementById('btn-cast-vote').disabled = false;
@@ -901,40 +1308,56 @@
     window.castVote = function() {
         if (!selectedCandidate || !authVoter) return;
 
-        markVoted(authVoter.voterId, selectedCandidate);
+        // ATOMIC: record ballot + mark voter as VOTED in one protected operation
+        // This re-reads storage to catch stale sessions
+        var result = atomicCastVote(authVoter.voterId, selectedCandidate);
 
-        const candidate = candidates.find(c => c.id === selectedCandidate);
+        if (!result.success) {
+            if (result.reason === 'ALREADY_VOTED') {
+                document.getElementById('already-vid').textContent = authVoter.voterId;
+                document.getElementById('already-name').textContent = authVoter.name;
+                authVoter = null;
+                selectedCandidate = null;
+                showScreen('screen-already-voted');
+                return;
+            }
+            // NOT_FOUND or other error
+            authVoter = null;
+            selectedCandidate = null;
+            showScreen('screen-home');
+            return;
+        }
 
-        const receipt = document.getElementById('vote-receipt');
-        receipt.innerHTML = `
-            <h3>🗳 Vote Receipt</h3>
-            <div class="info-card" style="border:none;padding:0;margin:0;background:transparent;">
-                <div class="info-row"><span class="label">Voter</span><span class="value">${authVoter.name}</span></div>
-                <div class="info-row"><span class="label">Voter ID</span><span class="value">${authVoter.voterId}</span></div>
-                <div class="info-row"><span class="label">Candidate</span><span class="value">${candidate.name}</span></div>
-                <div class="info-row"><span class="label">Party</span><span class="value">${candidate.party}</span></div>
-                <div class="info-row"><span class="label">Time</span><span class="value">${new Date().toLocaleString()}</span></div>
-                <div class="info-row"><span class="label">Biometric Auth</span><span class="value" style="color:var(--accent);">✅ Verified (Simulated)</span></div>
-            </div>
-        `;
+        var candidate = candidates.find(function(c) { return c.id === selectedCandidate; });
+
+        var receipt = document.getElementById('vote-receipt');
+        receipt.innerHTML =
+            '<h3>🗳 Vote Receipt</h3>' +
+            '<p style="color:var(--accent);font-weight:600;margin-bottom:12px;">Your vote has been recorded successfully.</p>' +
+            '<div class="info-card" style="border:none;padding:0;margin:0;background:transparent;">' +
+                '<div class="info-row"><span class="label">Voter</span><span class="value">' + authVoter.name + '</span></div>' +
+                '<div class="info-row"><span class="label">Voter ID</span><span class="value">' + authVoter.voterId + '</span></div>' +
+                '<div class="info-row"><span class="label">Time</span><span class="value">' + new Date().toLocaleString() + '</span></div>' +
+                '<div class="info-row"><span class="label">Biometric Auth</span><span class="value" style="color:var(--accent);">✅ Verified (Simulated)</span></div>' +
+            '</div>';
 
         showScreen('screen-voted');
         launchConfetti();
 
-        // Reset state
+        // Invalidate authentication session
         authVoter = null;
         selectedCandidate = null;
     };
 
     // ==================== CONFETTI ====================
     function launchConfetti() {
-        const container = document.createElement('div');
+        var container = document.createElement('div');
         container.className = 'confetti-container';
         document.body.appendChild(container);
 
-        const colors = ['#e53935','#1e88e5','#43a047','#fb8c00','#8e24aa','#fdd835','#00acc1'];
-        for (let i = 0; i < 60; i++) {
-            const piece = document.createElement('div');
+        var colors = ['#e53935','#1e88e5','#43a047','#fb8c00','#8e24aa','#fdd835','#00acc1'];
+        for (var i = 0; i < 80; i++) {
+            var piece = document.createElement('div');
             piece.className = 'confetti-piece';
             piece.style.left = Math.random() * 100 + '%';
             piece.style.background = colors[Math.floor(Math.random() * colors.length)];
@@ -945,8 +1368,31 @@
             piece.style.animationDelay = (Math.random() * 0.8) + 's';
             container.appendChild(piece);
         }
-        setTimeout(() => container.remove(), 4500);
+        setTimeout(function() { container.remove(); }, 4500);
     }
+
+    // ==================== ADMIN DASHBOARD ====================
+    window.refreshDashboard = function() {
+        var voters = getVoters();
+        var ballots = getBallots();
+        var secLog = getSecurityLog();
+
+        var total = 0, voted = 0, notVoted = 0;
+        for (var vid in voters) {
+            if (voters.hasOwnProperty(vid)) {
+                total++;
+                if (voters[vid].votingStatus === 'VOTED') voted++;
+                else notVoted++;
+            }
+        }
+
+        document.getElementById('dash-registered').textContent = total;
+        document.getElementById('dash-voted').textContent = voted;
+        document.getElementById('dash-not-voted').textContent = notVoted;
+        document.getElementById('dash-ballots').textContent = ballots.length;
+        document.getElementById('dash-duplicates').textContent = secLog.duplicateAttempts || 0;
+        document.getElementById('dash-auth-fails').textContent = secLog.authFails || 0;
+    };
 
     // ==================== INIT ====================
     renderCandidates();
