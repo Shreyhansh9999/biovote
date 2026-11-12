@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIOVOTE — Simulated Biometric Voting System</title>
+    <style>
+        /* ========== RESET & BASE ========== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --primary: #1a73e8;
+            --primary-dark: #1558b0;
+            --accent: #00c853;
+            --accent-dark: #009624;
+            --danger: #d32f2f;
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #21262d;
+            --text: #e6edf3;
+            --text-muted: #8b949e;
+            --border: #30363d;
+            --glow-blue: rgba(26, 115, 232, .35);
+            --glow-green: rgba(0, 200, 83, .35);
+            --radius: 16px;
+        }
+        html { font-size: 16px; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* ========== HEADER ========== */
+        header {
+            width: 100%;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+        }
+        .logo {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 1.5rem; font-weight: 800; letter-spacing: 2px;
+        }
+        .logo svg { width: 36px; height: 36px; }
+        .logo .bio { color: var(--primary); }
+        .logo .vote { color: var(--accent); }
+        .sim-badge {
+            font-size: .65rem; font-weight: 600;
+            background: rgba(255,193,7,.15); color: #ffc107;
+            padding: 3px 10px; border-radius: 999px;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+
+        /* ========== MAIN CONTAINER ========== */
+        main {
+            flex: 1; width: 100%; max-width: 520px;
+            padding: 32px 20px 60px;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* ========== SCREEN (generic card) ========== */
+        .screen {
+            display: none; flex-direction: column; align-items: center;
+            width: 100%; animation: fadeUp .45s ease;
+        }
+        .screen.active { display: flex; }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 { font-size: 1.6rem; margin-bottom: 6px; text-align: center; }
+        .subtitle {
+            color: var(--text-muted); font-size: .95rem;
+            text-align: center; margin-bottom: 28px; line-height: 1.5;
+        }
+
+        /* ========== FORM CONTROLS ========== */
+        .field { width: 100%; margin-bottom: 20px; position: relative; }
+        .field label {
+            display: block; font-size: .8rem; font-weight: 600;
+            color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;
+            letter-spacing: .6px;
+        }
+        .field input {
+            width: 100%; padding: 14px 16px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; color: var(--text);
+            font-size: 1rem; outline: none; transition: border .2s;
+        }
+        .field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--glow-blue); }
+        .field .error-msg {
+            color: var(--danger); font-size: .78rem; margin-top: 5px;
+            display: none;
+        }
+        .field.has-error input { border-color: var(--danger); }
+        .field.has-error .error-msg { display: block; }
+
+        /* ========== BUTTONS ========== */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 14px 32px; border: none; border-radius: 10px;
+            font-size: 1rem; font-weight: 600; cursor: pointer;
+            transition: background .2s, transform .1s, box-shadow .2s;
+            width: 100%;
+        }
+        .btn:active { transform: scale(.97); }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); box-shadow: 0 4px 20px var(--glow-blue); }
+        .btn-accent { background: var(--accent); color: #000; }
+        .btn-accent:hover { background: var(--accent-dark); box-shadow: 0 4px 20px var(--glow-green); }
+        .btn-outline {
+            background: transparent; color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover { background: var(--surface2); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:hover { background: #b71c1c; }
+        .btn + .btn { margin-top: 10px; }
+
+        /* ========== FINGERPRINT SCANNER ========== */
+        .scanner-wrap {
+            position: relative; width: 220px; height: 260px;
+            margin: 16px auto 20px; user-select: none; -webkit-user-select: none;
+            touch-action: none;
+        }
+        .scanner-outer {
+            width: 100%; height: 100%;
+            border: 3px solid var(--border);
+            border-radius: 36px;
+            background: linear-gradient(170deg, var(--surface), #0d1117);
+            display: flex; align-items: center; justify-content: center;
+            position: relative; overflow: hidden;
+            transition: border-color .3s, box-shadow .3s;
+        }
+        .scanner-outer.pressing {
+            border-color: var(--primary);
+            box-shadow: 0 0 30px var(--glow-blue), inset 0 0 20px rgba(26,115,232,.1);
+        }
+        .scanner-outer.success {
+            border-color: var(--accent);
+            box-shadow: 0 0 40px var(--glow-green), inset 0 0 20px rgba(0,200,83,.1);
+        }
+
+        /* Fingerprint SVG area */
+        .fp-visual {
+            position: relative; width: 140px; height: 170px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .fp-visual svg.fp-lines {
+            width: 100%; height: 100%; opacity: .25;
+            transition: opacity .5s;
+        }
+        .scanner-outer.pressing .fp-visual svg.fp-lines { opacity: .55; }
+        .scanner-outer.success .fp-visual svg.fp-lines { opacity: .9; }
+
+        .fp-letter {
+            position: absolute; font-size: 3.6rem; font-weight: 900;
+            color: var(--primary); opacity: .7;
+            text-shadow: 0 0 20px var(--glow-blue);
+            transition: opacity .4s, color .4s, text-shadow .4s;
+        }
+        .scanner-outer.success .fp-letter {
+            color: var(--accent); opacity: 1;
+            text-shadow: 0 0 24px var(--glow-green);
+        }
+
+        /* Scan beam */
+        .scan-beam {
+            position: absolute; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0; top: 0;
+            pointer-events: none;
+        }
+        .scanner-outer.pressing .scan-beam {
+            opacity: 1;
+            animation: beamSweep 1.2s ease-in-out infinite;
+        }
+        .scanner-outer.success .scan-beam {
+            opacity: 0; animation: none;
+        }
+        @keyframes beamSweep {
+            0%   { top: 8px; }
+            50%  { top: calc(100% - 12px); }
+            100% { top: 8px; }
+        }
+
+        /* Progress ring */
+        .progress-ring {
+            position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+        }
+        .progress-ring circle.track {
+            fill: none; stroke: var(--border); stroke-width: 4;
+        }
+        .progress-ring circle.bar {
+            fill: none; stroke: var(--primary); stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 138.23; stroke-dashoffset: 138.23;
+            transform: rotate(-90deg); transform-origin: center;
+            transition: stroke .3s;
+        }
+        .scanner-outer.success .progress-ring circle.bar { stroke: var(--accent); }
+
+        .scanner-label {
+            text-align: center; color: var(--text-muted); font-size: .85rem;
+            margin-top: 22px; line-height: 1.5;
+        }
+        .scanner-label strong { color: var(--text); }
+        .scanner-status {
+            text-align: center; font-size: .95rem; font-weight: 600;
+            margin-top: 10px; min-height: 24px;
+            transition: color .3s;
+        }
+
+        /* ========== INFO CARD ========== */
+        .info-card {
+            width: 100%; background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 20px 22px; margin-bottom: 22px;
+        }
+        .info-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-row .label { color: var(--text-muted); font-size: .82rem; text-transform: uppercase; letter-spacing: .5px; }
+        .info-row .value { font-weight: 600; font-size: .95rem; text-align: right; }
+
+        /* ========== SUCCESS CHECK ANIMATION ========== */
+        .success-check {
+            width: 80px; height: 80px; margin: 0 auto 18px;
+            border-radius: 50%; background: var(--accent);
+            display: flex; align-items: center; justify-content: center;
+            animation: popIn .5s cubic-bezier(.17,.67,.24,1.3);
+        }
+        .success-check svg { width: 40px; height: 40px; }
+        @keyframes popIn {
+            0%   { transform: scale(0); opacity: 0; }
+            60%  { transform: scale(1.15); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ========== VOTING SCREEN ========== */
+        .candidates { width: 100%; margin-bottom: 20px; }
+        .candidate-card {
+            width: 100%; background: var(--surface);
+            border: 2px solid var(--border); border-radius: var(--radius);
+            padding: 16px 20px; margin-bottom: 12px;
+            display: flex; align-items: center; gap: 14px;
+            cursor: pointer; transition: border-color .2s, box-shadow .2s;
+        }
+        .candidate-card:hover { border-color: var(--primary); }
+        .candidate-card.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 16px var(--glow-green);
+        }
+        .candidate-avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.3rem; font-weight: 700; color: #fff;
+        }
+        .candidate-info { flex: 1; }
+        .candidate-name { font-weight: 600; font-size: 1rem; }
+        .candidate-party { color: var(--text-muted); font-size: .82rem; }
+        .candidate-check {
+            width: 26px; height: 26px; border-radius: 50%;
+            border: 2px solid var(--border); display: flex;
+            align-items: center; justify-content: center;
+            transition: .2s;
+        }
+        .candidate-card.selected .candidate-check {
+            background: var(--accent); border-color: var(--accent);
+        }
+
+        /* ========== RECEIPT ========== */
+        .receipt {
+            width: 100%; background: var(--surface);
+            border: 1px dashed var(--border); border-radius: var(--radius);
+            padding: 24px; text-align: center; margin-bottom: 20px;
+        }
+        .receipt h3 { color: var(--accent); margin-bottom: 12px; }
+
+        /* ========== NAV TABS (bottom) ========== */
+        .nav-tabs {
+            display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; justify-content: center;
+        }
+        .nav-tab {
+            padding: 8px 18px; border-radius: 999px;
+            font-size: .82rem; font-weight: 600; cursor: pointer;
+            background: var(--surface2); color: var(--text-muted);
+            border: 1px solid var(--border); transition: .2s;
+        }
+        .nav-tab:hover { color: var(--text); border-color: var(--text-muted); }
+        .nav-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 480px) {
+            main { padding: 20px 14px 50px; }
+            h1 { font-size: 1.3rem; }
+            .scanner-wrap { width: 190px; height: 230px; }
+            .fp-letter { font-size: 3rem; }
+        }
+
+        /* ========== PARTICLES ========== */
+        .particles {
+            position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+        }
+        .particle {
+            position: absolute; width: 3px; height: 3px;
+            background: var(--primary); border-radius: 50%;
+            opacity: .3; animation: float linear infinite;
+        }
+        @keyframes float {
+            0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+            10%  { opacity: .3; }
+            90%  { opacity: .3; }
+            100% { transform: translateY(-10vh) scale(1); opacity: 0; }
+        }
+
+        /* ========== CONFETTI ========== */
+        .confetti-container {
+            position: fixed; inset: 0; pointer-events: none; z-index: 999;
+        }
+        .confetti-piece {
+            position: absolute; width: 10px; height: 10px;
+            top: -20px; animation: confettiFall linear forwards;
+        }
+        @keyframes confettiFall {
+            0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Floating particles background -->
+<div class="particles" id="particles"></div>
+
+<!-- ======================== HEADER ======================== -->
+<header>
+    <div class="logo">
+        <svg viewBox="0 0 36 36" fill="none">
+            <rect width="36" height="36" rx="8" fill="#1a73e8"/>
+            <path d="M18 8c-2 0-4 1-5.5 3C11 13 10 16 10 18c0 5 3.5 10 8 10s8-5 8-10c0-2-1-5-2.5-7C22 9 20 8 18 8zm0 3c1.5 0 3 1.5 3.5 3 .5 1.5.5 3 .5 4 0 3.5-2 7-4 7s-4-3.5-4-7c0-1 0-2.5.5-4C15 12.5 16.5 11 18 11z" fill="#fff"/>
+        </svg>
+        <span><span class="bio">BIO</span><span class="vote">VOTE</span></span>
+    </div>
+    <span class="sim-badge">⚠ Simulated Biometric</span>
+</header>
+
+<!-- ======================== MAIN ======================== -->
+<main>
+
+    <!-- ===== LANDING / HOME ===== -->
+    <div class="screen active" id="screen-home">
+        <h1>Welcome to BIOVOTE</h1>
+        <p class="subtitle">Secure, simulated biometric voting portal.<br>Register or authenticate to cast your vote.</p>
+        <button class="btn btn-primary" onclick="showScreen('screen-register')">🆕 New Voter Registration</button>
+        <button class="btn btn-outline" onclick="showScreen('screen-login')">🔐 Returning Voter Login</button>
+    </div>
+
+    <!-- ===== SCREEN 1: REGISTER — NAME ===== -->
+    <div class="screen" id="screen-register">
+        <h1>Voter Registration</h1>
+        <p class="subtitle">Enter your full name to begin voter registration.</p>
+        <div class="field" id="name-field">
+            <label for="reg-name">Full Name</label>
+            <input type="text" id="reg-name" placeholder="e.g. Shreyhansh Kumar" autocomplete="name" />
+            <div class="error-msg" id="name-error">Please enter your full name.</div>
+        </div>
+        <button class="btn btn-primary" onclick="handleNameSubmit()">Continue →</button>
+        <button class="btn btn-outline" onclick="showScreen('screen-home')" style="margin-top:12px;">← Back</button>
+    </div>
+
+    <!-- ===== SCREEN 2: FINGERPRINT ENROLLMENT ===== -->
+    <div class="screen" id="screen-enroll">
+        <h1>Fingerprint Enrollment</h1>
+        <p class="subtitle">Your initial: <strong id="enroll-letter-label"></strong><br>Long press the scanner for <strong>3 seconds</strong> to register your simulated fingerprint.</p>
+
+        <div class="scanner-wrap" id="enroll-scanner">
+            <div class="scanner-outer" id="enroll-scanner-outer">
+                <!-- Fingerprint lines SVG -->
+                <div class="fp-visual">
+                    <svg class="fp-lines" viewBox="0 0 140 170">
+                        <g stroke="#1a73e8" fill="none" stroke-width="1.5" opacity=".6">
+                            <ellipse cx="70" cy="95" rx="22" ry="35"/>
+                            <ellipse cx="70" cy="93" rx="30" ry="45"/>
+                            <ellipse cx="70" cy="90" rx="38" ry="55"/>
+                            <ellipse cx="70" cy="87" rx="46" ry="62"/>
+                            <ellipse cx="70" cy="84" rx="54" ry="68"/>
+                            <ellipse cx="70" cy="80" rx="60" ry="73"/>
+                            <path d="M70 30 Q40 55 35 95 Q32 120 50 145"/>
+                            <path d="M70 30 Q100 55 105 95 Q108 120 90 145"/>
+                            <path d="M55 35 Q38 65 38 100 Q38 125 55 148"/>
+                            <path d="M85 35 Q102 65 102 100 Q102 125 85 148"/>
+                            <path d="M70 28 Q55 50 50 85 Q47 110 58 140"/>
+                            <path d="M70 28 Q85 50 90 85 Q93 110 82 140"/>
+                        </g>
+                    </svg>
+                    <span class="fp-letter" id="enroll-letter"></span>
+                </div>
+                <div class="scan-beam"></div>
+            </div>
+            <!-- Progress ring -->
+            <svg class="progress-ring" width="48" height="48" viewBox="0 0 48 48">
+                <circle class="track" cx="24" cy="24" r="22"/>
+                <circle class="bar" id="enroll-progress" cx="24" cy="24" r="22"/>
+            </svg>
+        </div>
+
+        <div class="scanner-label">Place & <strong>hold</strong> your finger on the scanner</div>
+        <div class="scanner-status" id="enroll-status"></div>
+
+        <button class="btn btn-outline" onclick="resetEnroll(); showScreen('screen-register');" style="margin-top:8px;">← Back</button>
+    </div>
+
+    <!-- ===== SCREEN 3: REGISTRATION SUCCESS ===== -->
+    <div class="screen" id="screen-reg-success">
+        <div class="success-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <h1>Registration Complete!</h1>
+        <p class="subtitle">Your voter registration and simulated fingerprint enrollment were successful.</p>
+        <div class="info-card">
+            <div class="info-row"><span class="label">Voter Name</span><span class="value" id="success-name"></span></div>
+            <div class="info-row"><span class="label">Voter ID</span><span class="value" id="success-vid"></span></div>
+            <div class="info-row"><span class="label">Initial Letter</span><span class="value" id="success-letter"></span></div>
+            <div class="info-row"><span class="label">Fingerprint Status</span><span class="value" style="color:var(--accent);">✅ Enrolled (Simulated)</span></div>
+        </div>
+        <p class="subtitle" style="font-size:.82rem;">⚠ Save your <strong>Voter ID</strong> — you'll need it to authenticate later.</p>
+        <button class="btn btn-accent" onclick="showScreen('screen-home')">🏠 Go to Home</button>
+    </div>
+
+    <!-- ===== SCREEN 4: RETURNING VOTER LOGIN ===== -->
+    <div class="screen" id="screen-login">
+        <h1>Voter Authentication</h1>
+        <p class="subtitle">Enter your Voter ID to authenticate with your simulated biometric.</p>
+        <div class="field" id="login-field">
+            <label for="login-vid">Voter ID</label>
+            <input type="text" id="login-vid" placeholder="e.g. BV-XXXX-XXXX" autocomplete="off" />
+            <div class="error-msg" id="login-error">Please enter a valid Voter ID.</div>
+        </div>
+        <button class="btn btn-primary" onclick="handleLoginLookup()">Verify & Authenticate →</button>
+        <button class="btn btn-outline" onclick="showScreen('screen-home')" style="margin-top:12px;">← Back</button>
+    </div>
+
+    <!-- ===== SCREEN 4b: AUTHENTICATION SCANNER ===== -->
+    <div class="screen" id="screen-auth">
+        <h1>Biometric Verification</h1>
+        <p class="subtitle">Welcome back, <strong id="auth-name"></strong>.<br>Your registered initial: <strong id="auth-letter-label"></strong><br>Long press the scanner for <strong>3 seconds</strong> to verify.</p>
+
+        <div class="scanner-wrap" id="auth-scanner">
+            <div class="scanner-outer" id="auth-scanner-outer">
+                <div class="fp-visual">
+                    <svg class="fp-lines" viewBox="0 0 140 170">
+                        <g stroke="#1a73e8" fill="none" stroke-width="1.5" opacity=".6">
+                            <ellipse cx="70" cy="95" rx="22" ry="35"/>
+                            <ellipse cx="70" cy="93" rx="30" ry="45"/>
+                            <ellipse cx="70" cy="90" rx="38" ry="55"/>
+                            <ellipse cx="70" cy="87" rx="46" ry="62"/>
+                            <ellipse cx="70" cy="84" rx="54" ry="68"/>
+                            <ellipse cx="70" cy="80" rx="60" ry="73"/>
+                            <path d="M70 30 Q40 55 35 95 Q32 120 50 145"/>
+                            <path d="M70 30 Q100 55 105 95 Q108 120 90 145"/>
+                            <path d="M55 35 Q38 65 38 100 Q38 125 55 148"/>
+                            <path d="M85 35 Q102 65 102 100 Q102 125 85 148"/>
+                            <path d="M70 28 Q55 50 50 85 Q47 110 58 140"/>
+                            <path d="M70 28 Q85 50 90 85 Q93 110 82 140"/>
+                        </g>
+                    </svg>
+                    <span class="fp-letter" id="auth-letter"></span>
+                </div>
+                <div class="scan-beam"></div>
+            </div>
+            <svg class="progress-ring" width="48" height="48" viewBox="0 0 48 48">
+                <circle class="track" cx="24" cy="24" r="22"/>
+                <circle class="bar" id="auth-progress" cx="24" cy="24" r="22"/>
+            </svg>
+        </div>
+
+        <div class="scanner-label">Place & <strong>hold</strong> your finger on the scanner</div>
+        <div class="scanner-status" id="auth-status"></div>
+
+        <button class="btn btn-outline" onclick="resetAuth(); showScreen('screen-login');" style="margin-top:8px;">← Back</button>
+    </div>
+
+    <!-- ===== SCREEN 5: VOTING ===== -->
+    <div class="screen" id="screen-vote">
+        <h1>Cast Your Vote</h1>
+        <p class="subtitle">Select one candidate and submit your vote.</p>
+        <div class="candidates" id="candidates-list"></div>
+        <button class="btn btn-accent" id="btn-cast-vote" onclick="castVote()" disabled>🗳 Cast Vote</button>
+        <button class="btn btn-outline" onclick="showScreen('screen-home')" style="margin-top:12px;">← Cancel</button>
+    </div>
+
+    <!-- ===== SCREEN 6: VOTE CONFIRMATION ===== -->
+    <div class="screen" id="screen-voted">
+        <div class="success-check">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        </div>
+        <h1>Vote Cast Successfully!</h1>
+        <p class="subtitle">Your vote has been securely recorded.</p>
+        <div class="receipt" id="vote-receipt"></div>
+        <button class="btn btn-outline" onclick="showScreen('screen-home')">🏠 Go to Home</button>
+    </div>
+
+    <!-- ===== SCREEN: ALREADY VOTED ===== -->
+    <div class="screen" id="screen-already-voted">
+        <h1 style="color:var(--danger);">⛔ Already Voted</h1>
+        <p class="subtitle">This voter ID has already been used to cast a vote.<br>Each voter may only vote once.</p>
+        <div class="info-card">
+            <div class="info-row"><span class="label">Voter ID</span><span class="value" id="already-vid"></span></div>
+            <div class="info-row"><span class="label">Status</span><span class="value" style="color:var(--danger);">Vote Already Cast</span></div>
+        </div>
+        <button class="btn btn-outline" onclick="showScreen('screen-home')">🏠 Go to Home</button>
+    </div>
+
+    <!-- ===== SCREEN: AUTH FAILED ===== -->
+    <div class="screen" id="screen-auth-fail">
+        <h1 style="color:var(--danger);">❌ Authentication Failed</h1>
+        <p class="subtitle">Simulated biometric verification did not match.<br>Please try again or contact an election officer.</p>
+        <button class="btn btn-primary" onclick="showScreen('screen-login')">🔐 Try Again</button>
+        <button class="btn btn-outline" onclick="showScreen('screen-home')" style="margin-top:12px;">🏠 Go to Home</button>
+    </div>
+
+</main>
+
+<!-- ======================== SCRIPT ======================== -->
+<script>
+(function() {
+    'use strict';
+
+    // ==================== STATE ====================
+    let currentVoter = null;        // voter being registered
+    let authVoter = null;           // voter being authenticated
+    let selectedCandidate = null;
+
+    // Candidates data
+    const candidates = [
+        { id: 'c1', name: 'Aarav Sharma',    party: 'Progressive Alliance',   color: '#e53935' },
+        { id: 'c2', name: 'Priya Patel',     party: 'Democratic Front',       color: '#1e88e5' },
+        { id: 'c3', name: 'Rahul Desai',     party: 'National Unity Party',   color: '#43a047' },
+        { id: 'c4', name: 'Sneha Reddy',     party: 'People\'s Movement',     color: '#fb8c00' },
+        { id: 'c5', name: 'Vikram Singh',    party: 'Independent',            color: '#8e24aa' },
+    ];
+
+    // ==================== PARTICLES ====================
+    (function createParticles() {
+        const container = document.getElementById('particles');
+        for (let i = 0; i < 30; i++) {
+            const p = document.createElement('div');
+            p.className = 'particle';
+            p.style.left = Math.random() * 100 + '%';
+            p.style.animationDuration = (8 + Math.random() * 12) + 's';
+            p.style.animationDelay = (Math.random() * 10) + 's';
+            p.style.width = p.style.height = (2 + Math.random() * 3) + 'px';
+            container.appendChild(p);
+        }
+    })();
+
+    // ==================== NAVIGATION ====================
+    window.showScreen = function(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const target = document.getElementById(id);
+        if (target) target.classList.add('active');
+    };
+
+    // ==================== SCREEN 1: NAME SUBMIT ====================
+    window.handleNameSubmit = function() {
+        const input = document.getElementById('reg-name');
+        const field = document.getElementById('name-field');
+        const val = input.value.trim();
+        if (!val) {
+            field.classList.add('has-error');
+            return;
+        }
+        field.classList.remove('has-error');
+
+        const firstLetter = val.charAt(0).toUpperCase();
+        currentVoter = { name: val, letter: firstLetter };
+
+        // Populate enrollment screen
+        document.getElementById('enroll-letter-label').textContent = firstLetter;
+        document.getElementById('enroll-letter').textContent = firstLetter;
+        resetEnroll();
+        showScreen('screen-enroll');
+    };
+
+    // Remove error state on input
+    document.getElementById('reg-name').addEventListener('input', function() {
+        document.getElementById('name-field').classList.remove('has-error');
+    });
+
+    // ==================== FINGERPRINT SCANNER ENGINE ====================
+    function createScannerController(opts) {
+        const scannerEl = document.getElementById(opts.scannerId);
+        const outerEl = document.getElementById(opts.outerId);
+        const progressEl = document.getElementById(opts.progressId);
+        const statusEl = document.getElementById(opts.statusId);
+        const CIRCUMFERENCE = 2 * Math.PI * 22; // ~138.23
+
+        let pressing = false;
+        let startTime = 0;
+        let rafId = null;
+        let completed = false;
+
+        function updateProgress(fraction) {
+            const offset = CIRCUMFERENCE * (1 - fraction);
+            progressEl.style.strokeDashoffset = offset;
+        }
+
+        function tick() {
+            if (!pressing || completed) return;
+            const elapsed = Date.now() - startTime;
+            const fraction = Math.min(elapsed / 3000, 1);
+            updateProgress(fraction);
+
+            if (fraction < 1) {
+                const pct = Math.round(fraction * 100);
+                statusEl.textContent = `Scanning... ${pct}%`;
+                statusEl.style.color = 'var(--primary)';
+                rafId = requestAnimationFrame(tick);
+            } else {
+                // Success
+                completed = true;
+                pressing = false;
+                outerEl.classList.remove('pressing');
+                outerEl.classList.add('success');
+                statusEl.textContent = '✅ Scan Complete!';
+                statusEl.style.color = 'var(--accent)';
+                if (opts.onComplete) opts.onComplete();
+            }
+        }
+
+        function onPressStart(e) {
+            if (completed) return;
+            e.preventDefault();
+            pressing = true;
+            startTime = Date.now();
+            outerEl.classList.add('pressing');
+            statusEl.textContent = 'Hold steady...';
+            statusEl.style.color = 'var(--primary)';
+            rafId = requestAnimationFrame(tick);
+        }
+
+        function onPressEnd(e) {
+            if (completed) return;
+            e.preventDefault();
+            pressing = false;
+            outerEl.classList.remove('pressing');
+            cancelAnimationFrame(rafId);
+
+            const elapsed = Date.now() - startTime;
+            if (elapsed < 3000) {
+                // Not held long enough — reset
+                updateProgress(0);
+                statusEl.textContent = elapsed > 300 ? 'Released too early. Hold for 3 seconds.' : '';
+                statusEl.style.color = elapsed > 300 ? 'var(--danger)' : '';
+            }
+        }
+
+        // Mouse events
+        scannerEl.addEventListener('mousedown', onPressStart);
+        window.addEventListener('mouseup', onPressEnd);
+
+        // Touch events
+        scannerEl.addEventListener('touchstart', onPressStart, { passive: false });
+        window.addEventListener('touchend', onPressEnd, { passive: false });
+        window.addEventListener('touchcancel', onPressEnd, { passive: false });
+
+        return {
+            reset() {
+                completed = false;
+                pressing = false;
+                cancelAnimationFrame(rafId);
+                outerEl.classList.remove('pressing', 'success');
+                updateProgress(0);
+                statusEl.textContent = '';
+            },
+            destroy() {
+                scannerEl.removeEventListener('mousedown', onPressStart);
+                window.removeEventListener('mouseup', onPressEnd);
+                scannerEl.removeEventListener('touchstart', onPressStart);
+                window.removeEventListener('touchend', onPressEnd);
+                window.removeEventListener('touchcancel', onPressEnd);
+            }
+        };
+    }
+
+    // ==================== BIOMETRIC TEMPLATE GENERATOR ====================
+    function generateBiometricTemplate(name, letter) {
+        // Create a unique simulated biometric template using multiple sources of entropy
+        const timestamp = Date.now();
+        const rand = Math.random().toString(36).substring(2, 10);
+        const nameHash = hashString(name + timestamp + rand);
+        return `BIOTEMPLATE-${letter}-${nameHash}-${rand.toUpperCase()}`;
+    }
+
+    function hashString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0; // Convert to 32bit int
+        }
+        return Math.abs(hash).toString(16).toUpperCase().padStart(8, '0');
+    }
+
+    function generateVoterId() {
+        const seg1 = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const seg2 = Math.random().toString(36).substring(2, 6).toUpperCase();
+        return `BV-${seg1}-${seg2}`;
+    }
+
+    // ==================== ENROLLMENT SCANNER ====================
+    const enrollScanner = createScannerController({
+        scannerId: 'enroll-scanner',
+        outerId: 'enroll-scanner-outer',
+        progressId: 'enroll-progress',
+        statusId: 'enroll-status',
+        onComplete: onEnrollComplete
+    });
+
+    window.resetEnroll = function() {
+        enrollScanner.reset();
+    };
+
+    function onEnrollComplete() {
+        if (!currentVoter) return;
+
+        const voterId = generateVoterId();
+        const template = generateBiometricTemplate(currentVoter.name, currentVoter.letter);
+
+        const voterRecord = {
+            name: currentVoter.name,
+            letter: currentVoter.letter,
+            voterId: voterId,
+            template: template,
+            hasVoted: false,
+            registeredAt: new Date().toISOString()
+        };
+
+        // Save to localStorage
+        saveVoter(voterRecord);
+
+        // Populate success screen
+        document.getElementById('success-name').textContent = voterRecord.name;
+        document.getElementById('success-vid').textContent = voterRecord.voterId;
+        document.getElementById('success-letter').textContent = voterRecord.letter;
+
+        // Small delay for UX
+        setTimeout(() => showScreen('screen-reg-success'), 800);
+    }
+
+    // ==================== LOCAL STORAGE ====================
+    function getVoters() {
+        try {
+            return JSON.parse(localStorage.getItem('biovote_voters') || '{}');
+        } catch { return {}; }
+    }
+
+    function saveVoter(record) {
+        const voters = getVoters();
+        voters[record.voterId] = record;
+        localStorage.setItem('biovote_voters', JSON.stringify(voters));
+    }
+
+    function findVoter(voterId) {
+        const voters = getVoters();
+        return voters[voterId] || null;
+    }
+
+    function markVoted(voterId, candidateId) {
+        const voters = getVoters();
+        if (voters[voterId]) {
+            voters[voterId].hasVoted = true;
+            voters[voterId].votedFor = candidateId;
+            voters[voterId].votedAt = new Date().toISOString();
+            localStorage.setItem('biovote_voters', JSON.stringify(voters));
+        }
+    }
+
+    // ==================== SCREEN 4: RETURNING VOTER LOGIN ====================
+    window.handleLoginLookup = function() {
+        const input = document.getElementById('login-vid');
+        const field = document.getElementById('login-field');
+        const errorEl = document.getElementById('login-error');
+        const val = input.value.trim().toUpperCase();
+
+        if (!val) {
+            field.classList.add('has-error');
+            errorEl.textContent = 'Please enter your Voter ID.';
+            return;
+        }
+
+        const voter = findVoter(val);
+        if (!voter) {
+            field.classList.add('has-error');
+            errorEl.textContent = 'Voter ID not found. Please check and try again.';
+            return;
+        }
+
+        // Check if already voted
+        if (voter.hasVoted) {
+            document.getElementById('already-vid').textContent = voter.voterId;
+            showScreen('screen-already-voted');
+            return;
+        }
+
+        field.classList.remove('has-error');
+        authVoter = voter;
+
+        // Setup auth screen
+        document.getElementById('auth-name').textContent = voter.name;
+        document.getElementById('auth-letter-label').textContent = voter.letter;
+        document.getElementById('auth-letter').textContent = voter.letter;
+        resetAuth();
+        showScreen('screen-auth');
+    };
+
+    document.getElementById('login-vid').addEventListener('input', function() {
+        document.getElementById('login-field').classList.remove('has-error');
+    });
+
+    // ==================== AUTH SCANNER ====================
+    const authScanner = createScannerController({
+        scannerId: 'auth-scanner',
+        outerId: 'auth-scanner-outer',
+        progressId: 'auth-progress',
+        statusId: 'auth-status',
+        onComplete: onAuthComplete
+    });
+
+    window.resetAuth = function() {
+        authScanner.reset();
+    };
+
+    function onAuthComplete() {
+        if (!authVoter) return;
+
+        // Simulate biometric matching:
+        // We regenerate a verification template and compare the letter + voter ID
+        // against the stored template. Since this is a simulation, we validate that
+        // the stored template contains the voter's letter and was generated for this voter.
+        const stored = authVoter.template;
+        const expectedPrefix = `BIOTEMPLATE-${authVoter.letter}-`;
+
+        if (stored && stored.startsWith(expectedPrefix)) {
+            // Match — authenticate
+            setTimeout(() => {
+                selectedCandidate = null;
+                renderCandidates();
+                showScreen('screen-vote');
+            }, 800);
+        } else {
+            // Mismatch
+            setTimeout(() => showScreen('screen-auth-fail'), 800);
+        }
+    }
+
+    // ==================== VOTING ====================
+    function renderCandidates() {
+        const list = document.getElementById('candidates-list');
+        list.innerHTML = '';
+        candidates.forEach(c => {
+            const div = document.createElement('div');
+            div.className = 'candidate-card' + (selectedCandidate === c.id ? ' selected' : '');
+            div.innerHTML = `
+                <div class="candidate-avatar" style="background:${c.color};">${c.name.charAt(0)}</div>
+                <div class="candidate-info">
+                    <div class="candidate-name">${c.name}</div>
+                    <div class="candidate-party">${c.party}</div>
+                </div>
+                <div class="candidate-check">
+                    ${selectedCandidate === c.id ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                </div>
+            `;
+            div.addEventListener('click', () => {
+                selectedCandidate = c.id;
+                renderCandidates();
+                document.getElementById('btn-cast-vote').disabled = false;
+            });
+            list.appendChild(div);
+        });
+    }
+
+    window.castVote = function() {
+        if (!selectedCandidate || !authVoter) return;
+
+        markVoted(authVoter.voterId, selectedCandidate);
+
+        const candidate = candidates.find(c => c.id === selectedCandidate);
+
+        const receipt = document.getElementById('vote-receipt');
+        receipt.innerHTML = `
+            <h3>🗳 Vote Receipt</h3>
+            <div class="info-card" style="border:none;padding:0;margin:0;background:transparent;">
+                <div class="info-row"><span class="label">Voter</span><span class="value">${authVoter.name}</span></div>
+                <div class="info-row"><span class="label">Voter ID</span><span class="value">${authVoter.voterId}</span></div>
+                <div class="info-row"><span class="label">Candidate</span><span class="value">${candidate.name}</span></div>
+                <div class="info-row"><span class="label">Party</span><span class="value">${candidate.party}</span></div>
+                <div class="info-row"><span class="label">Time</span><span class="value">${new Date().toLocaleString()}</span></div>
+                <div class="info-row"><span class="label">Biometric Auth</span><span class="value" style="color:var(--accent);">✅ Verified (Simulated)</span></div>
+            </div>
+        `;
+
+        showScreen('screen-voted');
+        launchConfetti();
+
+        // Reset state
+        authVoter = null;
+        selectedCandidate = null;
+    };
+
+    // ==================== CONFETTI ====================
+    function launchConfetti() {
+        const container = document.createElement('div');
+        container.className = 'confetti-container';
+        document.body.appendChild(container);
+
+        const colors = ['#e53935','#1e88e5','#43a047','#fb8c00','#8e24aa','#fdd835','#00acc1'];
+        for (let i = 0; i < 60; i++) {
+            const piece = document.createElement('div');
+            piece.className = 'confetti-piece';
+            piece.style.left = Math.random() * 100 + '%';
+            piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+            piece.style.width = (6 + Math.random() * 8) + 'px';
+            piece.style.height = (6 + Math.random() * 8) + 'px';
+            piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+            piece.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+            piece.style.animationDelay = (Math.random() * 0.8) + 's';
+            container.appendChild(piece);
+        }
+        setTimeout(() => container.remove(), 4500);
+    }
+
+    // ==================== INIT ====================
+    renderCandidates();
+
+})();
+</script>
+</body>
+</html>
+
